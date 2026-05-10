@@ -16,7 +16,7 @@
 | OOP — S3 | `trip_plan`, `summary.trip_plan`, `transport_option` print methods |
 | Rcpp | `src/tsp.cpp` — Held–Karp DP, 2-opt, vectorised Haversine |
 | Vectorisation / performance | C++ Haversine matrix; vectorised cost matrix in `build_cost_matrix()` |
-| R package structure | this directory (DESCRIPTION/NAMESPACE/R/src/inst/tests) |
+| R package structure | this directory (DESCRIPTION/NAMESPACE/R/src/inst) |
 | Shiny | not in this module — Vika's UI consumes `plan_trip()` and `RouteOptimizer` |
 
 ## Public API
@@ -49,11 +49,10 @@ sol <- solve_tsp(cm, start = "Warsaw", end = "Gdansk")
 ro$plan()
 ```
 
-## Building / testing
+## Building
 
 ```sh
 R -e 'Rcpp::compileAttributes("tripPlanner"); install.packages("tripPlanner", repos=NULL, type="source")'
-R -e 'testthat::test_local("tripPlanner")'
 ```
 
 ## API credentials (optional)

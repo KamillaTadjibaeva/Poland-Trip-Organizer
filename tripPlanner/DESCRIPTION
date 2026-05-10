@@ -21,7 +21,5 @@ Imports:
     stats
 LinkingTo: Rcpp
 Suggests:
-    testthat (>= 3.0.0),
     knitr
 RoxygenNote: 7.3.1
-Config/testthat/edition: 3

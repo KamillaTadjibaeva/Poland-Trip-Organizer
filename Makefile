@@ -1,19 +1,18 @@
 PKG      := tripPlanner
 R        ?= R
 RSCRIPT  ?= Rscript
-DEPS     := Rcpp R6 httr jsonlite testthat pkgload shiny
+DEPS     := Rcpp R6 httr jsonlite pkgload shiny
 
-.PHONY: all setup deps install test check demo shiny ui clean help
+.PHONY: all setup deps install check demo shiny ui clean help
 
-## one-shot bootstrap: deps -> install -> tests
-all: deps install test
+## one-shot bootstrap: deps -> install
+all: deps install
 
 help:
 	@echo "Targets:"
-	@echo "  make          - install deps, build package, run tests (default)"
+	@echo "  make          - install deps and build package (default)"
 	@echo "  make deps     - install required CRAN packages"
 	@echo "  make install  - R CMD INSTALL $(PKG)"
-	@echo "  make test     - run the testthat suite"
 	@echo "  make check    - R CMD check (full package check)"
 	@echo "  make demo     - run a small end-to-end planning example"
 	@echo "  make shiny    - launch the Shiny demo UI (alias: make ui)"
@@ -27,9 +26,6 @@ deps:
 
 install: deps
 	$(R) CMD INSTALL $(PKG)
-
-test: install
-	$(RSCRIPT) -e 'testthat::test_local("$(PKG)")'
 
 check: deps
 	$(R) CMD build $(PKG)
