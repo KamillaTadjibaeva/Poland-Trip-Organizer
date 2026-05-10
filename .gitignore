@@ -1,0 +1,56 @@
+# R / RStudio
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+.Rapp.history
+
+# R package build artefacts
+*.o
+*.so
+*.dll
+*.dylib
+*.rds
+src/*.o
+src/*.so
+src/*.dll
+src/symbols.rds
+src-i386/
+src-x64/
+/*.tar.gz
+/*.Rcheck/
+
+# pkgdown / roxygen
+inst/doc/
+
+# testthat / covr
+tests/testthat/_snaps/
+*.lcov
+.covrignore
+
+# Renv / packrat
+renv/library/
+renv/local/
+renv/cellar/
+renv/lock/
+renv/python/
+renv/staging/
+.Rprofile
+packrat/lib*/
+packrat/src/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Secrets / env
+.env
+.env.local
+.Renviron

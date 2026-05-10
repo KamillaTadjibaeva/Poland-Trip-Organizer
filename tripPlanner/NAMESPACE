@@ -1,0 +1,18 @@
+useDynLib(tripPlanner, .registration = TRUE)
+importFrom(Rcpp, evalCpp)
+importFrom(R6, R6Class)
+importFrom(stats, setNames)
+importFrom(utils, read.csv, head)
+
+export(load_cities)
+export(haversine_matrix)
+export(build_cost_matrix)
+export(solve_tsp)
+export(RouteOptimizer)
+export(plan_trip)
+export(get_transport_options)
+export(filter_by_style)
+
+S3method(print, trip_plan)
+S3method(summary, trip_plan)
+S3method(print, transport_option)
