@@ -1,0 +1,20 @@
+# Compiled code
+*.o
+*.so
+*.dll
+*.rds
+*.rda
+
+# R/RStudio
+.Rhistory
+.Rdata
+.RData
+.Ruserdata
+*.Rproj.user/
+
+# macOS
+.DS_Store
+
+# Build outputs
+PolandTripPlanner.Rcheck/
+PolandTripPlanner_*.tar.gz
