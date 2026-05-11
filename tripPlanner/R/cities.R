@@ -1,8 +1,10 @@
-#' Load the bundled top-20 cities table.
+#' Load the bundled cities table.
 #'
 #' Reads the package CSV (`inst/extdata/cities.csv`) describing the cities
 #' that populate the UI dropdown. A custom `path` may be supplied to load
-#' a different dataset (must contain `city`, `lat`, `lon` columns).
+#' a different dataset (must contain `city`, `lat`, `lon` columns; optional
+#' `population`, `historical_score`, `cultural_score`, `poi_count` and
+#' `voivodeship` enable time allocation and route discovery).
 #'
 #' @param path Optional path to a CSV file. Defaults to the package data.
 #' @return A data.frame with rows for each city.
