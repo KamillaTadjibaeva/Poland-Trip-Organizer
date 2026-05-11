@@ -20,7 +20,9 @@ RouteOptimizer <- R6::R6Class(
     start_date  = NULL,
     #' @field end_date    trip end date.
     end_date    = NULL,
-    #' @field transport   "plane" / "train" / "bus" / "car".
+    #' @field transport   character vector of allowed transport modes
+    #'   ("plane" / "train" / "bus" / "car"). Length 1 = single mode,
+    #'   length > 1 = the optimiser picks the best mode per leg.
     transport   = NULL,
     #' @field style       "scenic" / "fastest" / "cheapest".
     style       = NULL,
@@ -31,7 +33,9 @@ RouteOptimizer <- R6::R6Class(
     #' @param flight_in  Arrival city.
     #' @param flight_out Departure city (defaults to `flight_in`).
     #' @param start_date,end_date Trip dates (anything coercible to `Date`).
-    #' @param transport,style See package overview.
+    #' @param transport Character vector of one or more modes; legs are
+    #'   costed against the best (cheapest/fastest/most-scenic) of these.
+    #' @param style See package overview.
     #' @param cities Optional override for the cities reference table.
     initialize = function(selected, flight_in, flight_out = NULL,
                           start_date, end_date,
@@ -54,7 +58,15 @@ RouteOptimizer <- R6::R6Class(
       sd <- .assert_date(start_date, "start_date")
       ed <- .assert_date(end_date, "end_date")
       if (ed < sd) stop("`end_date` must be on or after `start_date`.", call. = FALSE)
-      .assert_choice(transport, .TRANSPORT_TYPES, "transport")
+      if (!is.character(transport) || !length(transport)) {
+        stop("`transport` must be a non-empty character vector.", call. = FALSE)
+      }
+      bad <- setdiff(transport, .TRANSPORT_TYPES)
+      if (length(bad)) {
+        stop("Unknown transport mode(s): ", paste(bad, collapse = ", "),
+             call. = FALSE)
+      }
+      transport <- unique(transport)
       .assert_choice(style,     .TRAVEL_STYLES,   "style")
 
       # Eagerly validate that every requested city exists in the reference
@@ -245,7 +257,7 @@ RouteOptimizer <- R6::R6Class(
       cat("  flight in: ", self$flight_in, "\n")
       cat("  flight out:", self$flight_out, "\n")
       cat("  dates:     ", format(self$start_date), "->", format(self$end_date), "\n")
-      cat("  transport: ", self$transport, "\n")
+      cat("  transport: ", paste(self$transport, collapse = ", "), "\n")
       cat("  style:     ", self$style, "\n")
       invisible(self)
     }
@@ -273,7 +285,8 @@ plan_trip <- function(selected, flight_in, flight_out = NULL,
 
 #' @export
 print.trip_plan <- function(x, ...) {
-  cat("Trip plan (", x$style, " / ", x$transport, ")\n", sep = "")
+  cat("Trip plan (", x$style, " / ",
+      paste(x$transport, collapse = "+"), ")\n", sep = "")
   cat("Route: ", paste(x$route, collapse = " -> "), "\n")
   cat(sprintf("Total cost (objective): %.2f  [%s solver]\n",
               x$total_cost, x$method))

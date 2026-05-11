@@ -1,6 +1,6 @@
 #' Fetch transport options for a single leg.
 #'
-#' Tries the provider implied by `transport`:
+#' For each mode in `transport`, calls the corresponding provider:
 #' \itemize{
 #'   \item `plane` -> Aviationstack (schedules) if `AVIATIONSTACK_KEY` is
 #'     set, otherwise Amadeus Self-Service if `AMADEUS_CLIENT_ID/SECRET`
@@ -8,14 +8,16 @@
 #'   \item `train` -> koleo.pl public endpoints (currently flaky -> mock)
 #'   \item `bus`/`car` -> deterministic synthetic estimates
 #' }
-#' If a network call fails (no API key, offline, rate-limit) the function
-#' degrades gracefully to a deterministic mock so the rest of the pipeline
-#' keeps working — the Shiny UI can still demonstrate behaviour without
-#' credentials.
+#' Results from all selected modes are pooled and ranked by `style`. If a
+#' network call fails (no API key, offline, rate-limit) that provider
+#' silently degrades to a deterministic mock so the rest of the pipeline
+#' keeps working.
 #'
 #' @param from,to City names.
 #' @param date    Travel `Date`.
-#' @param transport,style See package overview.
+#' @param transport Character vector of modes. Length 1 = single mode
+#'   (legacy behaviour); >1 = multi-modal suggestions on the same leg.
+#' @param style See package overview.
 #' @param cities  Cities reference data.frame (used for IATA / coordinates).
 #' @return A list of `transport_option` S3 objects, sorted by the user's
 #'   travel style.
@@ -25,23 +27,35 @@ get_transport_options <- function(from, to, date,
                                   style     = "fastest",
                                   cities    = NULL) {
   .assert_string(from); .assert_string(to)
-  .assert_choice(transport, .TRANSPORT_TYPES)
-  .assert_choice(style,     .TRAVEL_STYLES)
+  if (!is.character(transport) || !length(transport)) {
+    stop("`transport` must be a non-empty character vector.", call. = FALSE)
+  }
+  bad <- setdiff(transport, .TRANSPORT_TYPES)
+  if (length(bad)) {
+    stop("Unknown transport mode(s): ", paste(bad, collapse = ", "),
+         call. = FALSE)
+  }
+  .assert_choice(style, .TRAVEL_STYLES)
   date <- .assert_date(date, "date")
   if (is.null(cities)) cities <- load_cities()
 
-  raw <- tryCatch(
-    switch(transport,
-           plane = .plane_provider(from, to, date, cities),
-           train = .koleo_trains(from, to, date, cities),
-           bus   = .mock_options(from, to, date, transport, cities, n = 4L),
-           car   = .mock_options(from, to, date, transport, cities, n = 1L)),
-    error = function(e) {
-      message("Transport API failed (", conditionMessage(e),
-              "); falling back to mock data.")
-      .mock_options(from, to, date, transport, cities, n = 3L)
-    }
-  )
+  fetch_one <- function(mode) {
+    tryCatch(
+      switch(mode,
+             plane = .plane_provider(from, to, date, cities),
+             train = .koleo_trains(from, to, date, cities),
+             bus   = .mock_options(from, to, date, mode, cities, n = 4L),
+             car   = .mock_options(from, to, date, mode, cities, n = 1L)),
+      error = function(e) {
+        message("Transport API failed for ", mode, " (",
+                conditionMessage(e), "); falling back to mock data.")
+        .mock_options(from, to, date, mode, cities, n = 3L)
+      }
+    )
+  }
+
+  # Pool options from every selected mode, then re-rank under one style.
+  raw <- unlist(lapply(unique(transport), fetch_one), recursive = FALSE)
   filter_by_style(raw, style)
 }
 
