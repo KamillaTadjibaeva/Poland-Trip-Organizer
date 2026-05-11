@@ -72,8 +72,10 @@ For real flight schedules, set an Aviationstack key (free tier, schedules only â
 
 ```sh
 export AVIATIONSTACK_KEY=...
+export GOOGLE_MAPS_API_KEY='AIza...'
 # or persist for R sessions:
 echo 'AVIATIONSTACK_KEY=...' >> ~/.Renviron
+echo 'GOOGLE_MAPS_API_KEY=...' >> ~/.Renviron
 ```
 
 Amadeus is also supported (`AMADEUS_CLIENT_ID` / `AMADEUS_CLIENT_SECRET`) but their

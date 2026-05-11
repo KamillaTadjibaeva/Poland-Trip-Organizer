@@ -1,21 +1,26 @@
 #' Fetch transport options for a single leg.
 #'
-#' Tries the provider implied by `transport`:
+#' For each mode in `transport`, calls the corresponding provider:
 #' \itemize{
 #'   \item `plane` -> Aviationstack (schedules) if `AVIATIONSTACK_KEY` is
 #'     set, otherwise Amadeus Self-Service if `AMADEUS_CLIENT_ID/SECRET`
 #'     are set, otherwise mock data.
 #'   \item `train` -> koleo.pl public endpoints (currently flaky -> mock)
-#'   \item `bus`/`car` -> deterministic synthetic estimates
+#'   \item `car`   -> Google Routes API if `GOOGLE_MAPS_API_KEY` is set,
+#'     otherwise deterministic synthetic estimate.
+#'   \item `bus`   -> Google Routes API (TRANSIT mode, filtered to bus legs)
+#'     if `GOOGLE_MAPS_API_KEY` is set, otherwise deterministic estimate.
 #' }
-#' If a network call fails (no API key, offline, rate-limit) the function
-#' degrades gracefully to a deterministic mock so the rest of the pipeline
-#' keeps working — the Shiny UI can still demonstrate behaviour without
-#' credentials.
+#' Results from all selected modes are pooled and ranked by `style`. If a
+#' network call fails (no API key, offline, rate-limit) that provider
+#' silently degrades to a deterministic mock so the rest of the pipeline
+#' keeps working.
 #'
 #' @param from,to City names.
 #' @param date    Travel `Date`.
-#' @param transport,style See package overview.
+#' @param transport Character vector of modes. Length 1 = single mode
+#'   (legacy behaviour); >1 = multi-modal suggestions on the same leg.
+#' @param style See package overview.
 #' @param cities  Cities reference data.frame (used for IATA / coordinates).
 #' @return A list of `transport_option` S3 objects, sorted by the user's
 #'   travel style.
@@ -25,23 +30,35 @@ get_transport_options <- function(from, to, date,
                                   style     = "fastest",
                                   cities    = NULL) {
   .assert_string(from); .assert_string(to)
-  .assert_choice(transport, .TRANSPORT_TYPES)
-  .assert_choice(style,     .TRAVEL_STYLES)
+  if (!is.character(transport) || !length(transport)) {
+    stop("`transport` must be a non-empty character vector.", call. = FALSE)
+  }
+  bad <- setdiff(transport, .TRANSPORT_TYPES)
+  if (length(bad)) {
+    stop("Unknown transport mode(s): ", paste(bad, collapse = ", "),
+         call. = FALSE)
+  }
+  .assert_choice(style, .TRAVEL_STYLES)
   date <- .assert_date(date, "date")
   if (is.null(cities)) cities <- load_cities()
 
-  raw <- tryCatch(
-    switch(transport,
-           plane = .plane_provider(from, to, date, cities),
-           train = .koleo_trains(from, to, date, cities),
-           bus   = .mock_options(from, to, date, transport, cities, n = 4L),
-           car   = .mock_options(from, to, date, transport, cities, n = 1L)),
-    error = function(e) {
-      message("Transport API failed (", conditionMessage(e),
-              "); falling back to mock data.")
-      .mock_options(from, to, date, transport, cities, n = 3L)
-    }
-  )
+  fetch_one <- function(mode) {
+    tryCatch(
+      switch(mode,
+             plane = .plane_provider(from, to, date, cities),
+             train = .koleo_trains(from, to, date, cities),
+             bus   = .bus_provider(from, to, date, cities),
+             car   = .car_provider(from, to, date, cities)),
+      error = function(e) {
+        message("Transport API failed for ", mode, " (",
+                conditionMessage(e), "); falling back to mock data.")
+        .mock_options(from, to, date, mode, cities, n = 3L)
+      }
+    )
+  }
+
+  # Pool options from every selected mode, then re-rank under one style.
+  raw <- unlist(lapply(unique(transport), fetch_one), recursive = FALSE)
   filter_by_style(raw, style)
 }
 
@@ -301,4 +318,166 @@ print.transport_option <- function(x, ...) {
   h <- suppressWarnings(as.numeric(m[2])); if (is.na(h)) h <- 0
   mn <- suppressWarnings(as.numeric(m[3])); if (is.na(mn)) mn <- 0
   h + mn / 60
+}
+
+# --- Google Routes API (car) -------------------------------------------------
+# Uses the v2 Routes API (POST https://routes.googleapis.com/directions/v2:computeRoutes).
+# Requires GOOGLE_MAPS_API_KEY with the "Routes API" enabled. Falls back to a
+# deterministic mock if the key is missing or the call fails.
+.car_provider <- function(from, to, date, cities) {
+  if (nzchar(Sys.getenv("GOOGLE_MAPS_API_KEY"))) {
+    return(.google_routes_car(from, to, date, cities))
+  }
+  .mock_options(from, to, date, "car", cities, n = 1L)
+}
+
+.google_routes_car <- function(from, to, date, cities) {
+  key <- Sys.getenv("GOOGLE_MAPS_API_KEY")
+  if (!nzchar(key)) {
+    return(.mock_options(from, to, date, "car", cities, n = 1L))
+  }
+  rows <- .lookup_cities(c(from, to), cities)
+  body <- list(
+    origin      = list(location = list(latLng = list(
+      latitude = rows$lat[1], longitude = rows$lon[1]))),
+    destination = list(location = list(latLng = list(
+      latitude = rows$lat[2], longitude = rows$lon[2]))),
+    travelMode           = "DRIVE",
+    routingPreference    = "TRAFFIC_AWARE",
+    computeAlternativeRoutes = TRUE,
+    units                = "METRIC"
+  )
+  resp <- httr::POST(
+    "https://routes.googleapis.com/directions/v2:computeRoutes",
+    httr::add_headers(
+      "Content-Type"   = "application/json",
+      "X-Goog-Api-Key" = key,
+      "X-Goog-FieldMask" =
+        "routes.distanceMeters,routes.duration,routes.description"
+    ),
+    body = jsonlite::toJSON(body, auto_unbox = TRUE),
+    httr::timeout(10)
+  )
+  httr::stop_for_status(resp)
+  parsed <- httr::content(resp, as = "parsed", type = "application/json")
+  routes <- parsed$routes %||% list()
+  if (!length(routes)) {
+    return(.mock_options(from, to, date, "car", cities, n = 1L))
+  }
+  depart <- as.POSIXct(date) + 9 * 3600   # default 09:00 departure
+  lapply(seq_along(routes), function(i) {
+    r   <- routes[[i]]
+    km  <- (r$distanceMeters %||% NA_real_) / 1000
+    # duration is a string like "12345s"
+    dur_s <- suppressWarnings(as.numeric(sub("s$", "", r$duration %||% "")))
+    dur_h <- if (is.na(dur_s)) NA_real_ else dur_s / 3600
+    # EUR estimate: fuel + tolls heuristic (~0.12 EUR/km), same as mock.
+    price <- if (is.na(km)) NA_real_ else km * 0.12
+    desc  <- r$description %||% sprintf("route %d", i)
+    .make_option(
+      mode = "car", from = from, to = to,
+      depart       = depart,
+      duration_h   = dur_h,
+      price_eur    = price,
+      scenic_score = 0.9,
+      provider     = paste0("Google Routes (", desc, ")"),
+      extra        = list(distance_km = km)
+    )
+  })
+}
+
+# --- Google Routes API (bus, via TRANSIT mode) -------------------------------
+# TRANSIT routes can mix bus / rail / tram; we keep only those whose first
+# transit leg is a BUS. Same key + same SKU as the car path.
+.bus_provider <- function(from, to, date, cities) {
+  if (nzchar(Sys.getenv("GOOGLE_MAPS_API_KEY"))) {
+    return(.google_routes_bus(from, to, date, cities))
+  }
+  .mock_options(from, to, date, "bus", cities, n = 4L)
+}
+
+.google_routes_bus <- function(from, to, date, cities) {
+  key <- Sys.getenv("GOOGLE_MAPS_API_KEY")
+  if (!nzchar(key)) {
+    return(.mock_options(from, to, date, "bus", cities, n = 4L))
+  }
+  rows <- .lookup_cities(c(from, to), cities)
+  # Default 09:00 local-ish departure; Routes wants RFC3339 UTC.
+  depart_ts <- as.POSIXct(date) + 9 * 3600
+  body <- list(
+    origin      = list(location = list(latLng = list(
+      latitude = rows$lat[1], longitude = rows$lon[1]))),
+    destination = list(location = list(latLng = list(
+      latitude = rows$lat[2], longitude = rows$lon[2]))),
+    travelMode               = "TRANSIT",
+    departureTime            = format(depart_ts, "%Y-%m-%dT%H:%M:%SZ",
+                                      tz = "UTC"),
+    computeAlternativeRoutes = TRUE,
+    transitPreferences       = list(allowedTravelModes = list("BUS")),
+    units                    = "METRIC"
+  )
+  resp <- httr::POST(
+    "https://routes.googleapis.com/directions/v2:computeRoutes",
+    httr::add_headers(
+      "Content-Type"   = "application/json",
+      "X-Goog-Api-Key" = key,
+      "X-Goog-FieldMask" = paste(
+        "routes.distanceMeters",
+        "routes.duration",
+        "routes.description",
+        "routes.legs.steps.transitDetails",
+        sep = ",")
+    ),
+    body = jsonlite::toJSON(body, auto_unbox = TRUE),
+    httr::timeout(10)
+  )
+  httr::stop_for_status(resp)
+  parsed <- httr::content(resp, as = "parsed", type = "application/json")
+  routes <- parsed$routes %||% list()
+  if (!length(routes)) {
+    return(.mock_options(from, to, date, "bus", cities, n = 2L))
+  }
+
+  km_total <- .haversine_pair(from, to, cities)
+  est_price <- km_total * 0.05 + 2   # same heuristic as the bus mock
+
+  has_bus <- function(r) {
+    legs  <- r$legs %||% list()
+    for (lg in legs) for (st in lg$steps %||% list()) {
+      td <- st$transitDetails %||% NULL
+      vt <- td$transitLine$vehicle$type %||% ""
+      if (identical(vt, "BUS")) return(TRUE)
+    }
+    FALSE
+  }
+  bus_routes <- Filter(has_bus, routes)
+  if (!length(bus_routes)) {
+    # Google returned only rail/tram; fall back rather than mislabel.
+    return(.mock_options(from, to, date, "bus", cities, n = 2L))
+  }
+
+  lapply(seq_along(bus_routes), function(i) {
+    r     <- bus_routes[[i]]
+    km    <- (r$distanceMeters %||% NA_real_) / 1000
+    dur_s <- suppressWarnings(as.numeric(sub("s$", "", r$duration %||% "")))
+    dur_h <- if (is.na(dur_s)) NA_real_ else dur_s / 3600
+    # Pick the first bus leg's line name as the provider label.
+    label <- "transit"
+    for (lg in r$legs %||% list()) for (st in lg$steps %||% list()) {
+      td <- st$transitDetails %||% NULL
+      if (identical(td$transitLine$vehicle$type %||% "", "BUS")) {
+        label <- td$transitLine$nameShort %||% td$transitLine$name %||% label
+        break
+      }
+    }
+    .make_option(
+      mode = "bus", from = from, to = to,
+      depart       = depart_ts,
+      duration_h   = dur_h,
+      price_eur    = est_price,
+      scenic_score = 0.5,
+      provider     = paste0("Google Routes (", label, ")"),
+      extra        = list(distance_km = km)
+    )
+  })
 }
