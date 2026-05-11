@@ -10,7 +10,7 @@ input <- list(
   start_date = "2026-06-01",
   end_date   = "2026-06-10",
   transport  = "car",
-  style      = "scenic"   # car + scenic -> route discovery turns ON
+  style      = "scenic"
 )
 
 # --- Pretty-print the user's choices --------------------------------------
