@@ -6,7 +6,9 @@
 #'     set, otherwise Amadeus Self-Service if `AMADEUS_CLIENT_ID/SECRET`
 #'     are set, otherwise mock data.
 #'   \item `train` -> koleo.pl public endpoints (currently flaky -> mock)
-#'   \item `bus`/`car` -> deterministic synthetic estimates
+#'   \item `car`   -> Google Routes API if `GOOGLE_MAPS_API_KEY` is set,
+#'     otherwise deterministic synthetic estimate.
+#'   \item `bus`   -> deterministic synthetic estimate
 #' }
 #' If a network call fails (no API key, offline, rate-limit) the function
 #' degrades gracefully to a deterministic mock so the rest of the pipeline
@@ -300,4 +302,70 @@ print.transport_option <- function(x, ...) {
   h <- suppressWarnings(as.numeric(m[2])); if (is.na(h)) h <- 0
   mn <- suppressWarnings(as.numeric(m[3])); if (is.na(mn)) mn <- 0
   h + mn / 60
+}
+
+# --- Google Routes API (car) -------------------------------------------------
+# Uses the v2 Routes API (POST https://routes.googleapis.com/directions/v2:computeRoutes).
+# Requires GOOGLE_MAPS_API_KEY with the "Routes API" enabled. Falls back to a
+# deterministic mock if the key is missing or the call fails.
+.car_provider <- function(from, to, date, cities) {
+  if (nzchar(Sys.getenv("GOOGLE_MAPS_API_KEY"))) {
+    return(.google_routes_car(from, to, date, cities))
+  }
+  .mock_options(from, to, date, "car", cities, n = 1L)
+}
+
+.google_routes_car <- function(from, to, date, cities) {
+  key <- Sys.getenv("GOOGLE_MAPS_API_KEY")
+  if (!nzchar(key)) {
+    return(.mock_options(from, to, date, "car", cities, n = 1L))
+  }
+  rows <- .lookup_cities(c(from, to), cities)
+  body <- list(
+    origin      = list(location = list(latLng = list(
+      latitude = rows$lat[1], longitude = rows$lon[1]))),
+    destination = list(location = list(latLng = list(
+      latitude = rows$lat[2], longitude = rows$lon[2]))),
+    travelMode           = "DRIVE",
+    routingPreference    = "TRAFFIC_AWARE",
+    computeAlternativeRoutes = TRUE,
+    units                = "METRIC"
+  )
+  resp <- httr::POST(
+    "https://routes.googleapis.com/directions/v2:computeRoutes",
+    httr::add_headers(
+      "Content-Type"   = "application/json",
+      "X-Goog-Api-Key" = key,
+      "X-Goog-FieldMask" =
+        "routes.distanceMeters,routes.duration,routes.description"
+    ),
+    body = jsonlite::toJSON(body, auto_unbox = TRUE),
+    httr::timeout(10)
+  )
+  httr::stop_for_status(resp)
+  parsed <- httr::content(resp, as = "parsed", type = "application/json")
+  routes <- parsed$routes %||% list()
+  if (!length(routes)) {
+    return(.mock_options(from, to, date, "car", cities, n = 1L))
+  }
+  depart <- as.POSIXct(date) + 9 * 3600   # default 09:00 departure
+  lapply(seq_along(routes), function(i) {
+    r   <- routes[[i]]
+    km  <- (r$distanceMeters %||% NA_real_) / 1000
+    # duration is a string like "12345s"
+    dur_s <- suppressWarnings(as.numeric(sub("s$", "", r$duration %||% "")))
+    dur_h <- if (is.na(dur_s)) NA_real_ else dur_s / 3600
+    # EUR estimate: fuel + tolls heuristic (~0.12 EUR/km), same as mock.
+    price <- if (is.na(km)) NA_real_ else km * 0.12
+    desc  <- r$description %||% sprintf("route %d", i)
+    .make_option(
+      mode = "car", from = from, to = to,
+      depart       = depart,
+      duration_h   = dur_h,
+      price_eur    = price,
+      scenic_score = 0.9,
+      provider     = paste0("Google Routes (", desc, ")"),
+      extra        = list(distance_km = km)
+    )
+  })
 }
