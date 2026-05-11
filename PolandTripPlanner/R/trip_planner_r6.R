@@ -92,8 +92,9 @@ TripPlanner <- R6Class("TripPlanner",
       }
 
       valid_transport <- c("car", "train", "bus", "plane")
-      if (!transport %in% valid_transport) {
-        stop(paste("'transport' must be one of:",
+      if (!is.character(transport) || !length(transport) ||
+          !all(transport %in% valid_transport)) {
+        stop(paste("'transport' must be one or more of:",
                    paste(valid_transport, collapse = ", ")))
       }
 

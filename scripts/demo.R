@@ -9,8 +9,8 @@ input <- list(
   flight_out = "Gdańsk",
   start_date = "2026-06-01",
   end_date   = "2026-06-10",
-  transport  = "train",
-  style      = "fastest"
+  transport  = c("car", "train"),   # multi-select: best mode per leg
+  style      = "scenic"             # scenic -> route discovery turns ON
 )
 
 # --- Pretty-print the user's choices --------------------------------------
@@ -24,8 +24,7 @@ cat("Flying out from  : ", input$flight_out, "\n", sep = "")
 cat("Travel dates     : ", input$start_date, " to ", input$end_date,
     "  (", as.integer(as.Date(input$end_date) - as.Date(input$start_date)),
     " days)\n", sep = "")
-cat("Preferred transport: ", input$transport,
-    "  (used between cities once you've landed)\n", sep = "")
+cat("Preferred transport: ", paste(input$transport, collapse = " + "), "\n", sep = "")
 cat("Travel style       : ", input$style, "  ",
     switch(input$style,
            fastest  = "(minimise total travel time)",
