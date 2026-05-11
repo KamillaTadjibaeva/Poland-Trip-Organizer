@@ -61,6 +61,7 @@ Set environment variables before launching R/Shiny:
 
 ```
 AVIATIONSTACK_KEY=...           # preferred: real flight schedules (free tier)
+GOOGLE_MAPS_API_KEY=...
 ```
 
 Without them, `get_transport_options()` returns deterministic mock results.

@@ -135,6 +135,7 @@ For real airline schedules:
 ```sh
 # in ~/.Renviron (R reads this on startup):
 AVIATIONSTACK_KEY=your_key
+GOOGLE_MAPS_API_KEY=your_key
 ```
 
 Sign up at <https://aviationstack.com/signup/free>. Free tier returns real
