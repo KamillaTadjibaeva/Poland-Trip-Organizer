@@ -8,7 +8,8 @@
 #'   \item `train` -> koleo.pl public endpoints (currently flaky -> mock)
 #'   \item `car`   -> Google Routes API if `GOOGLE_MAPS_API_KEY` is set,
 #'     otherwise deterministic synthetic estimate.
-#'   \item `bus`   -> deterministic synthetic estimate
+#'   \item `bus`   -> Google Routes API (TRANSIT mode, filtered to bus legs)
+#'     if `GOOGLE_MAPS_API_KEY` is set, otherwise deterministic estimate.
 #' }
 #' Results from all selected modes are pooled and ranked by `style`. If a
 #' network call fails (no API key, offline, rate-limit) that provider
@@ -46,7 +47,7 @@ get_transport_options <- function(from, to, date,
       switch(mode,
              plane = .plane_provider(from, to, date, cities),
              train = .koleo_trains(from, to, date, cities),
-             bus   = .mock_options(from, to, date, mode, cities, n = 4L),
+             bus   = .bus_provider(from, to, date, cities),
              car   = .car_provider(from, to, date, cities)),
       error = function(e) {
         message("Transport API failed for ", mode, " (",
@@ -380,6 +381,102 @@ print.transport_option <- function(x, ...) {
       price_eur    = price,
       scenic_score = 0.9,
       provider     = paste0("Google Routes (", desc, ")"),
+      extra        = list(distance_km = km)
+    )
+  })
+}
+
+# --- Google Routes API (bus, via TRANSIT mode) -------------------------------
+# TRANSIT routes can mix bus / rail / tram; we keep only those whose first
+# transit leg is a BUS. Same key + same SKU as the car path.
+.bus_provider <- function(from, to, date, cities) {
+  if (nzchar(Sys.getenv("GOOGLE_MAPS_API_KEY"))) {
+    return(.google_routes_bus(from, to, date, cities))
+  }
+  .mock_options(from, to, date, "bus", cities, n = 4L)
+}
+
+.google_routes_bus <- function(from, to, date, cities) {
+  key <- Sys.getenv("GOOGLE_MAPS_API_KEY")
+  if (!nzchar(key)) {
+    return(.mock_options(from, to, date, "bus", cities, n = 4L))
+  }
+  rows <- .lookup_cities(c(from, to), cities)
+  # Default 09:00 local-ish departure; Routes wants RFC3339 UTC.
+  depart_ts <- as.POSIXct(date) + 9 * 3600
+  body <- list(
+    origin      = list(location = list(latLng = list(
+      latitude = rows$lat[1], longitude = rows$lon[1]))),
+    destination = list(location = list(latLng = list(
+      latitude = rows$lat[2], longitude = rows$lon[2]))),
+    travelMode               = "TRANSIT",
+    departureTime            = format(depart_ts, "%Y-%m-%dT%H:%M:%SZ",
+                                      tz = "UTC"),
+    computeAlternativeRoutes = TRUE,
+    transitPreferences       = list(allowedTravelModes = list("BUS")),
+    units                    = "METRIC"
+  )
+  resp <- httr::POST(
+    "https://routes.googleapis.com/directions/v2:computeRoutes",
+    httr::add_headers(
+      "Content-Type"   = "application/json",
+      "X-Goog-Api-Key" = key,
+      "X-Goog-FieldMask" = paste(
+        "routes.distanceMeters",
+        "routes.duration",
+        "routes.description",
+        "routes.legs.steps.transitDetails",
+        sep = ",")
+    ),
+    body = jsonlite::toJSON(body, auto_unbox = TRUE),
+    httr::timeout(10)
+  )
+  httr::stop_for_status(resp)
+  parsed <- httr::content(resp, as = "parsed", type = "application/json")
+  routes <- parsed$routes %||% list()
+  if (!length(routes)) {
+    return(.mock_options(from, to, date, "bus", cities, n = 2L))
+  }
+
+  km_total <- .haversine_pair(from, to, cities)
+  est_price <- km_total * 0.05 + 2   # same heuristic as the bus mock
+
+  has_bus <- function(r) {
+    legs  <- r$legs %||% list()
+    for (lg in legs) for (st in lg$steps %||% list()) {
+      td <- st$transitDetails %||% NULL
+      vt <- td$transitLine$vehicle$type %||% ""
+      if (identical(vt, "BUS")) return(TRUE)
+    }
+    FALSE
+  }
+  bus_routes <- Filter(has_bus, routes)
+  if (!length(bus_routes)) {
+    # Google returned only rail/tram; fall back rather than mislabel.
+    return(.mock_options(from, to, date, "bus", cities, n = 2L))
+  }
+
+  lapply(seq_along(bus_routes), function(i) {
+    r     <- bus_routes[[i]]
+    km    <- (r$distanceMeters %||% NA_real_) / 1000
+    dur_s <- suppressWarnings(as.numeric(sub("s$", "", r$duration %||% "")))
+    dur_h <- if (is.na(dur_s)) NA_real_ else dur_s / 3600
+    # Pick the first bus leg's line name as the provider label.
+    label <- "transit"
+    for (lg in r$legs %||% list()) for (st in lg$steps %||% list()) {
+      td <- st$transitDetails %||% NULL
+      if (identical(td$transitLine$vehicle$type %||% "", "BUS")) {
+        label <- td$transitLine$nameShort %||% td$transitLine$name %||% label
+        break
+      }
+    }
+    .make_option(
+      mode = "bus", from = from, to = to,
+      depart       = depart_ts,
+      duration_h   = dur_h,
+      price_eur    = est_price,
+      scenic_score = 0.5,
+      provider     = paste0("Google Routes (", label, ")"),
       extra        = list(distance_km = km)
     )
   })
