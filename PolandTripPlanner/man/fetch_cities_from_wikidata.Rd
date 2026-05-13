@@ -17,20 +17,5 @@ A data.frame with columns: name, voivodeship, lat, lon, population
 \description{
 Queries Wikidata for Polish cities with population > min_population,
 retrieving name, coordinates, population, and voivodeship.
-This is a free API - no key required.
-}
-\details{
-Uses defensive programming: validates response, handles connection errors,
-and falls back to the built-in dataset on failure.
-
-The SPARQL query retrieves:
-\itemize{
-\item City name (English label)
-\item Geographic coordinates (latitude, longitude)
-\item Population (most recent value)
-\item Voivodeship (administrative region)
-}
-Historical and cultural scores are not available from Wikidata,
-so these are merged from the built-in dataset when available,
-or estimated based on population.
+Falls back to the built-in dataset on failure.
 }
