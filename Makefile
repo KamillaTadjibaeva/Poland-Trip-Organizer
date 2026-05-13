@@ -1,4 +1,5 @@
-PKG      := tripPlanner
+PKG      := PolandTripPlanner
+PKGDIR   := PolandTripPlanner
 R        ?= R
 RSCRIPT  ?= Rscript
 DEPS     := Rcpp R6 httr jsonlite pkgload shiny
@@ -12,7 +13,7 @@ help:
 	@echo "Targets:"
 	@echo "  make          - install deps and build package (default)"
 	@echo "  make deps     - install required CRAN packages"
-	@echo "  make install  - R CMD INSTALL $(PKG)"
+	@echo "  make install  - R CMD INSTALL $(PKGDIR)"
 	@echo "  make check    - R CMD check (full package check)"
 	@echo "  make demo     - run a small end-to-end planning example"
 	@echo "  make shiny    - launch the Shiny demo UI (alias: make ui)"
@@ -25,10 +26,10 @@ deps:
 	  else cat("All dependencies already installed.\n")'
 
 install: deps
-	$(R) CMD INSTALL $(PKG)
+	$(R) CMD INSTALL $(PKGDIR)
 
 check: deps
-	$(R) CMD build $(PKG)
+	$(R) CMD build $(PKGDIR)
 	$(R) CMD check --no-manual $(PKG)_*.tar.gz
 
 demo: install
@@ -38,4 +39,4 @@ shiny ui: install
 	$(RSCRIPT) -e 'shiny::runApp("shiny", launch.browser = TRUE)'
 
 clean:
-	rm -rf $(PKG)/src/*.o $(PKG)/src/*.so $(PKG).Rcheck $(PKG)_*.tar.gz
+	rm -rf $(PKGDIR)/src/*.o $(PKGDIR)/src/*.so $(PKG).Rcheck $(PKG)_*.tar.gz

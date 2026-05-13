@@ -1,19 +1,20 @@
 # advanced-R — Multi-City Trip Planner
 
 Group project for the *Advanced R* course. The app helps a traveller pick a set
-of cities, then plans the most efficient way to visit them and surfaces
-transport options for each leg.
+of cities, then plans the most efficient way to visit them, allocates time per
+city based on importance, discovers scenic detours, and surfaces transport
+options for each leg.
 
 ## Module split
 
-| Member  | Module / responsibility                                                                 |
-|---------|------------------------------------------------------------------------------------------|
-| Vika    | Shiny UI: dropdown of top 20 cities, flight-in / flight-out, dates, transport, style    |
-| **Nijat** | **`tripPlanner` R package** — TSP route optimisation + per-leg transport suggestions    |
-| Kamilla | Time-allocation per city + scenic detour discovery along the route                      |
+| Member    | Module / responsibility                                                               |
+|-----------|----------------------------------------------------------------------------------------|
+| Vika      | Shiny UI: dropdown of top 20 cities, flight-in / flight-out, dates, transport, style  |
+| **Nijat** | TSP route optimisation + per-leg transport suggestions (`RouteOptimizer`)              |
+| **Kamilla** | Time-allocation per city + scenic detour discovery (`TripPlanner`, `City`)           |
 
-This repository currently contains **Nijat's part** under [tripPlanner/](tripPlanner/).
-See [tripPlanner/README.md](tripPlanner/README.md) for the package-level details.
+Everything is integrated into the single **`PolandTripPlanner`** R package under
+[Project/PolandTripPlanner/](Project/PolandTripPlanner/).
 
 ## Quick start
 
@@ -23,13 +24,22 @@ Prerequisites:
 
 From a fresh clone:
 ```sh
-make            # installs deps, builds the package, runs all 27 tests
+make            # installs deps, builds the package
 make demo       # runs an end-to-end sample trip plan
 make help       # list other targets
 ```
 
-## What the `tripPlanner` package provides
+## What the `PolandTripPlanner` package provides
 
+### Time allocation & discovery (Kamilla)
+- **`TripPlanner`** (R6) — orchestrates time allocation and route discovery.
+- **`City`** (R6) — individual city with importance scoring and day allocation.
+- **`get_polish_cities()`** — bundled 40-city dataset with cultural/historical scores.
+- **`calculate_importance()`** — vectorised composite importance scoring.
+- **`find_route_discoveries()`** — finds interesting stops near the travel route.
+- **`fetch_cities_from_wikidata()`** — live city data from Wikidata SPARQL.
+
+### Route optimisation & transport (Nijat)
 - **`load_cities()`** — reads the bundled top-20 Polish cities CSV used by the UI dropdown.
 - **`plan_trip(...)`** — one-call pipeline: validates inputs → builds a cost matrix → solves the TSP → attaches ranked transport options for each leg.
 - **`RouteOptimizer`** (R6) — same pipeline, step-by-step.
@@ -38,29 +48,33 @@ make help       # list other targets
 
 ## Techniques covered (per the course brief)
 
-| Technique                                  | Where                                               |
-|--------------------------------------------|-----------------------------------------------------|
-| Advanced functions + defensive programming | [tripPlanner/R/utils.R](tripPlanner/R/utils.R), input validation in `RouteOptimizer$initialize` |
-| OOP — R6                                   | [tripPlanner/R/route_optimizer.R](tripPlanner/R/route_optimizer.R) |
-| OOP — S3                                   | `trip_plan` / `transport_option` `print` & `summary` methods |
-| Rcpp                                       | [tripPlanner/src/tsp.cpp](tripPlanner/src/tsp.cpp)  |
-| Vectorisation / performance                | C++ Haversine matrix; vectorised `build_cost_matrix()` |
-| R package structure                        | [tripPlanner/](tripPlanner/) (DESCRIPTION/NAMESPACE/R/src/inst/tests) |
-| Shiny app                                  | Vika's module (consumes `plan_trip()`)              |
+| Technique                                  | Where                                                                         |
+|--------------------------------------------|-------------------------------------------------------------------------------|
+| Advanced functions + defensive programming | `R/utils.R`, input validation in `RouteOptimizer` and `TripPlanner`           |
+| OOP — R6                                   | `TripPlanner`, `City`, `RouteOptimizer`                                       |
+| OOP — S3                                   | `trip_plan` / `transport_option` `print` & `summary` methods                  |
+| Rcpp                                       | `src/tsp.cpp` (TSP solvers), `src/distances.cpp` (Haversine)                  |
+| Vectorisation / performance                | C++ Haversine matrix; vectorised `build_cost_matrix()`, `calculate_importance()`|
+| R package structure                        | Full package: DESCRIPTION/NAMESPACE/R/src/inst/man                            |
+| Shiny app                                  | `shiny/app.R` (consumes `plan_trip()`)                                        |
+| API integration                            | Wikidata SPARQL, Aviationstack, Amadeus, koleo.pl                             |
 
 ## Repository layout
 
 ```
 .
-├── Makefile              # one-command bootstrap (deps + install + tests)
-├── README.md             # this file
-└── tripPlanner/          # Nijat's R package
-    ├── DESCRIPTION
-    ├── NAMESPACE
-    ├── R/                # R sources
-    ├── src/              # C++ (Rcpp) sources
-    ├── inst/extdata/     # cities.csv reference data
-    └── tests/testthat/   # unit tests
+├── Makefile                  # one-command bootstrap (deps + install)
+├── README.md                 # this file
+├── PolandTripPlanner/        # the unified R package
+│   ├── DESCRIPTION
+│   ├── NAMESPACE
+│   ├── R/                   # R sources (both modules)
+│   ├── src/                 # C++ (Rcpp) sources
+│   ├── inst/extdata/        # cities.csv + polish_cities.csv
+│   └── man/                 # generated documentation
+├── shiny/                    # Shiny front-end
+├── scripts/                  # stand-alone demo scripts
+└── docs/                     # integration guide
 ```
 
 ## API credentials (optional)

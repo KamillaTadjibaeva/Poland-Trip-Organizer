@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # demo.R — human-friendly end-to-end planning example.
-suppressPackageStartupMessages(library(tripPlanner))
+suppressPackageStartupMessages(library(PolandTripPlanner))
 
 # --- User input (this is what Vika's UI will collect) ----------------------
 input <- list(

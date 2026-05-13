@@ -4,7 +4,7 @@
 # render flow shown here is the entire integration surface.
 
 library(shiny)
-library(tripPlanner)
+library(PolandTripPlanner)
 
 cities <- load_cities()
 

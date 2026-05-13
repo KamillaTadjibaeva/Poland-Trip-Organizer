@@ -1,6 +1,6 @@
 # Vika — integration guide
 
-This is everything you need to consume `tripPlanner` from Shiny.
+This is everything you need to consume `PolandTripPlanner` from Shiny.
 You should not need to read the C++, the optimiser, or the API code.
 
 ## Setup (one time)
@@ -8,7 +8,7 @@ You should not need to read the C++, the optimiser, or the API code.
 ```sh
 git clone <repo>
 cd advanced-R
-make            # installs all R deps incl. shiny, builds the package, runs tests
+make            # installs all R deps incl. shiny, builds the package
 ```
 
 Prereqs on a fresh machine:
@@ -33,7 +33,7 @@ and replace the layout. The data wiring is already done.
 You only ever touch three things:
 
 ```r
-library(tripPlanner)
+library(PolandTripPlanner)
 
 cities <- load_cities()    # data.frame: city, country, lat, lon, iata, ...
                            # use `cities$city` to populate the dropdown.
