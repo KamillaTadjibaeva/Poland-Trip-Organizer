@@ -8,14 +8,6 @@ tsp_two_opt <- function(d, start, end, max_iter = 1000L) {
     .Call(`_tripPlanner_tsp_two_opt`, d, start, end, max_iter)
 }
 
-haversine_pair_cpp <- function(lat1, lon1, lat2, lon2) {
-    .Call(`_tripPlanner_haversine_pair_cpp`, lat1, lon1, lat2, lon2)
-}
-
-min_distance_to_route_cpp <- function(city_lats, city_lons, route_lats, route_lons) {
-    .Call(`_tripPlanner_min_distance_to_route_cpp`, city_lats, city_lons, route_lats, route_lons)
-}
-
 haversine_cpp <- function(lat, lon) {
     .Call(`_tripPlanner_haversine_cpp`, lat, lon)
 }

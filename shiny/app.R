@@ -21,9 +21,9 @@ ui <- fluidPage(
                   selected = "Gdansk"),
       dateInput("start_date", "Start date", value = Sys.Date() + 30),
       dateInput("end_date",   "End date",   value = Sys.Date() + 38),
-      selectInput("transport", "Transport (pick one or more)",
+      selectInput("transport", "Transport",
                   choices = c("plane", "train", "bus", "car"),
-                  selected = "train", multiple = TRUE),
+                  selected = "train"),
       selectInput("style", "Travel style",
                   choices = c("fastest", "cheapest", "scenic"),
                   selected = "fastest"),
@@ -33,11 +33,6 @@ ui <- fluidPage(
     mainPanel(
       h3("Recommended route"),
       verbatimTextOutput("route"),
-      h3("Time allocation per city"),
-      tableOutput("allocation"),
-      h3("Scenic detour suggestions"),
-      helpText("Only computed when style = scenic."),
-      tableOutput("discoveries"),
       h3("Per-leg breakdown"),
       uiOutput("legs"),
       verbatimTextOutput("err")
@@ -84,17 +79,6 @@ server <- function(input, output, session) {
     paste0(paste(p$route, collapse = "  ->  "),
            sprintf("\n\nTotal cost: %.1f %s   (solver: %s, %d legs)",
                    p$total_cost, unit, p$method, length(p$legs)))
-  })
-
-  output$allocation <- renderTable({
-    p <- plan(); if (inherits(p, "trip_error") || is.null(p$allocation)) return(NULL)
-    p$allocation
-  })
-
-  output$discoveries <- renderTable({
-    p <- plan(); if (inherits(p, "trip_error")) return(NULL)
-    if (is.null(p$discoveries) || p$discoveries$n_found == 0L) return(NULL)
-    p$discoveries$discoveries
   })
 
   output$legs <- renderUI({

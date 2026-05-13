@@ -151,53 +151,6 @@ List tsp_two_opt(NumericMatrix d, int start, int end, int max_iter = 1000) {
 }
 
 // ---------------------------------------------------------------------------
-// Scalar Haversine distance between two geographic points (km).
-// Convenience for callers that just want a single pairwise distance and
-// don't want to allocate / index into an NxN matrix.
-// ---------------------------------------------------------------------------
-// [[Rcpp::export]]
-double haversine_pair_cpp(double lat1, double lon1, double lat2, double lon2) {
-    const double R = 6371.0088;
-    const double DEG = M_PI / 180.0;
-    double rlat1 = lat1 * DEG, rlat2 = lat2 * DEG;
-    double dlat = (lat2 - lat1) * DEG;
-    double dlon = (lon2 - lon1) * DEG;
-    double a = std::sin(dlat / 2.0);
-    double b = std::sin(dlon / 2.0);
-    double h = a * a + std::cos(rlat1) * std::cos(rlat2) * b * b;
-    return R * 2.0 * std::atan2(std::sqrt(h), std::sqrt(1.0 - h));
-}
-
-// ---------------------------------------------------------------------------
-// For each candidate city, return the minimum Haversine distance (km) to any
-// city on the route plus the index (1-based) of the nearest route city.
-// Used by find_route_discoveries() to score off-path detour suggestions.
-// ---------------------------------------------------------------------------
-// [[Rcpp::export]]
-List min_distance_to_route_cpp(NumericVector city_lats, NumericVector city_lons,
-                               NumericVector route_lats, NumericVector route_lons) {
-    const int nc = city_lats.size();
-    const int nr = route_lats.size();
-    if (city_lons.size() != nc) stop("city_lats and city_lons must match");
-    if (route_lons.size() != nr) stop("route_lats and route_lons must match");
-
-    NumericVector min_dist(nc);
-    IntegerVector nearest(nc);
-    for (int i = 0; i < nc; ++i) {
-        double best = std::numeric_limits<double>::infinity();
-        int bj = 0;
-        for (int j = 0; j < nr; ++j) {
-            double d = haversine_pair_cpp(city_lats[i], city_lons[i],
-                                          route_lats[j], route_lons[j]);
-            if (d < best) { best = d; bj = j; }
-        }
-        min_dist[i] = best;
-        nearest[i]  = bj + 1; // 1-indexed for R
-    }
-    return List::create(_["min_dist"] = min_dist, _["nearest"] = nearest);
-}
-
-// ---------------------------------------------------------------------------
 // Vectorised Haversine distance matrix — pure C++ for speed.
 // lat / lon in decimal degrees; returns kilometres.
 // ---------------------------------------------------------------------------

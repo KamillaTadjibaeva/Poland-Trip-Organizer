@@ -1,0 +1,24 @@
+Package: PolandTripPlanner
+Title: Poland Trip Planning with Time Allocation and Route Discovery
+Version: 0.1.0
+Authors@R: person("Kamilla", "Tadjibaeva", role = c("aut", "cre"),
+                  email = "kamilla.tadjibaeva@student.edu")
+Description: Provides tools for planning trips to Poland including intelligent
+    time allocation across cities based on their cultural and historical
+    significance, and scenic route discovery that identifies interesting
+    stops along the way. Uses S3 and R6 class systems, C++ via Rcpp
+    for performance-critical distance computations, and defensive programming
+    throughout.
+License: GPL-2
+Encoding: UTF-8
+LazyData: true
+Depends: R (>= 4.0.0)
+Imports:
+    R6,
+    httr,
+    jsonlite,
+    Rcpp (>= 1.0.0)
+LinkingTo: Rcpp
+Suggests:
+    testthat
+RoxygenNote: 7.3.1

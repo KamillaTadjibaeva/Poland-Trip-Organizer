@@ -36,34 +36,6 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// haversine_pair_cpp
-double haversine_pair_cpp(double lat1, double lon1, double lat2, double lon2);
-RcppExport SEXP _tripPlanner_haversine_pair_cpp(SEXP lat1SEXP, SEXP lon1SEXP, SEXP lat2SEXP, SEXP lon2SEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< double >::type lat1(lat1SEXP);
-    Rcpp::traits::input_parameter< double >::type lon1(lon1SEXP);
-    Rcpp::traits::input_parameter< double >::type lat2(lat2SEXP);
-    Rcpp::traits::input_parameter< double >::type lon2(lon2SEXP);
-    rcpp_result_gen = Rcpp::wrap(haversine_pair_cpp(lat1, lon1, lat2, lon2));
-    return rcpp_result_gen;
-END_RCPP
-}
-// min_distance_to_route_cpp
-List min_distance_to_route_cpp(NumericVector city_lats, NumericVector city_lons, NumericVector route_lats, NumericVector route_lons);
-RcppExport SEXP _tripPlanner_min_distance_to_route_cpp(SEXP city_latsSEXP, SEXP city_lonsSEXP, SEXP route_latsSEXP, SEXP route_lonsSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< NumericVector >::type city_lats(city_latsSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type city_lons(city_lonsSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type route_lats(route_latsSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type route_lons(route_lonsSEXP);
-    rcpp_result_gen = Rcpp::wrap(min_distance_to_route_cpp(city_lats, city_lons, route_lats, route_lons));
-    return rcpp_result_gen;
-END_RCPP
-}
 // haversine_cpp
 NumericMatrix haversine_cpp(NumericVector lat, NumericVector lon);
 RcppExport SEXP _tripPlanner_haversine_cpp(SEXP latSEXP, SEXP lonSEXP) {
@@ -78,11 +50,9 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_tripPlanner_tsp_held_karp",            (DL_FUNC) &_tripPlanner_tsp_held_karp,            3},
-    {"_tripPlanner_tsp_two_opt",              (DL_FUNC) &_tripPlanner_tsp_two_opt,              4},
-    {"_tripPlanner_haversine_pair_cpp",       (DL_FUNC) &_tripPlanner_haversine_pair_cpp,       4},
-    {"_tripPlanner_min_distance_to_route_cpp",(DL_FUNC) &_tripPlanner_min_distance_to_route_cpp,4},
-    {"_tripPlanner_haversine_cpp",            (DL_FUNC) &_tripPlanner_haversine_cpp,            2},
+    {"_tripPlanner_tsp_held_karp", (DL_FUNC) &_tripPlanner_tsp_held_karp, 3},
+    {"_tripPlanner_tsp_two_opt",   (DL_FUNC) &_tripPlanner_tsp_two_opt,   4},
+    {"_tripPlanner_haversine_cpp", (DL_FUNC) &_tripPlanner_haversine_cpp, 2},
     {NULL, NULL, 0}
 };
 

@@ -8,12 +8,12 @@ transport options for each leg.
 
 | Member  | Module / responsibility                                                                 |
 |---------|------------------------------------------------------------------------------------------|
-| Vika    | Shiny UI: dropdown of cities, flight-in / flight-out, dates, transport, style           |
-| Nijat   | TSP route optimisation + per-leg transport suggestions                                  |
-| Kamilla | Time allocation per city + scenic detour discovery along the route                      |
+| Vika    | Shiny UI: dropdown of top 20 cities, flight-in / flight-out, dates, transport, style    |
+| **Nijat** | **`tripPlanner` R package** — TSP route optimisation + per-leg transport suggestions    |
+| Kamilla | Time-allocation per city + scenic detour discovery along the route                      |
 
-All three modules now live in the single [tripPlanner/](tripPlanner/) R
-package — see [tripPlanner/README.md](tripPlanner/README.md).
+This repository currently contains **Nijat's part** under [tripPlanner/](tripPlanner/).
+See [tripPlanner/README.md](tripPlanner/README.md) for the package-level details.
 
 ## Quick start
 
@@ -30,14 +30,11 @@ make help       # list other targets
 
 ## What the `tripPlanner` package provides
 
-- **`load_cities()`** — reads the bundled Polish cities CSV (with population, voivodeship and historical / cultural scores).
-- **`fetch_cities_from_wikidata()`** — live Wikidata SPARQL alternative; degrades to the bundled CSV when offline.
-- **`plan_trip(...)`** — one-call pipeline: validates inputs → builds a cost matrix → solves the TSP → attaches ranked transport options for each leg → allocates trip days per city → (car+scenic only) finds scenic detours.
-- **`RouteOptimizer`** (R6) — same pipeline, step-by-step (`$cost_matrix()`, `$plan()`, `$allocate_time()`, `$discover_route()`).
+- **`load_cities()`** — reads the bundled top-20 Polish cities CSV used by the UI dropdown.
+- **`plan_trip(...)`** — one-call pipeline: validates inputs → builds a cost matrix → solves the TSP → attaches ranked transport options for each leg.
+- **`RouteOptimizer`** (R6) — same pipeline, step-by-step.
 - **`solve_tsp()`** — exact Held–Karp DP (n ≤ 12) or nearest-neighbour + 2-opt (larger n), implemented in C++ via Rcpp.
-- **`calculate_importance()` / `allocate_days()`** — vectorised scoring + day distribution across cities.
-- **`find_route_discoveries()`** — uses a C++ batched min-distance-to-route to rank off-path stops.
-- **`get_transport_options()`** — queries Amadeus / Aviationstack / koleo.pl and degrades to deterministic mocks if no credentials.
+- **`get_transport_options()`** — queries Amadeus (planes) / koleo.pl (trains) and degrades to deterministic mocks if no credentials or the API is down.
 
 ## Techniques covered (per the course brief)
 
@@ -72,10 +69,8 @@ For real flight schedules, set an Aviationstack key (free tier, schedules only �
 
 ```sh
 export AVIATIONSTACK_KEY=...
-export GOOGLE_MAPS_API_KEY='AIza...'
 # or persist for R sessions:
 echo 'AVIATIONSTACK_KEY=...' >> ~/.Renviron
-echo 'GOOGLE_MAPS_API_KEY=...' >> ~/.Renviron
 ```
 
 Amadeus is also supported (`AMADEUS_CLIENT_ID` / `AMADEUS_CLIENT_SECRET`) but their
