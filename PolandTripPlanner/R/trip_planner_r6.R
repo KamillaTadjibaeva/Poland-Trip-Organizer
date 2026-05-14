@@ -159,7 +159,7 @@ TripPlanner <- R6Class("TripPlanner",
       if (is.character(start_date)) start_date <- as.Date(start_date)
       if (is.character(end_date))   end_date   <- as.Date(end_date)
 
-      # Validate all parameters (defensive programming)
+      # Validate all parameters 
       private$.validate_trip_params(must_see, start_date, end_date,
                                     transport)
 

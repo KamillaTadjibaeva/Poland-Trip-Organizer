@@ -36,7 +36,7 @@ find_route_discoveries <- function(route_cities, all_cities,
   }
 
   # Look up route city coordinates
-  route_idx <- match(route_cities, all_cities$name)
+  route_idx <- match(route_cities, all_cities$name) #finds which row number each route city occupies in the data.frame. 
   if (any(is.na(route_idx))) {
     unknown <- route_cities[is.na(route_idx)]
     stop(paste("Unknown cities in route:", paste(unknown, collapse = ", ")))
