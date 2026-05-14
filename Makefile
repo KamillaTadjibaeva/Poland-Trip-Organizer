@@ -35,6 +35,9 @@ check: deps
 demo: install
 	$(RSCRIPT) scripts/demo.R
 
+demo-kamilla: install
+	$(RSCRIPT) scripts/run_demo.R
+
 shiny ui: install
 	$(RSCRIPT) -e 'shiny::runApp("shiny", launch.browser = TRUE)'
 
