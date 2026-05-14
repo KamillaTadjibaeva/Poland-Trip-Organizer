@@ -75,7 +75,7 @@ find_route_discoveries <- function(route_cities, all_cities,
                     route_lats[j], route_lons[j])
     }, numeric(1))
     min_dist[i] <- min(dists)
-    nearest_idx[i] <- which.min(dists)
+    nearest_idx[i] <- which.min(dists) #index of user destination city to which the candidate is closest to
   }
 
   # Filter cities within radius

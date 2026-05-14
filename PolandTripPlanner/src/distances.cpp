@@ -4,27 +4,21 @@ using namespace Rcpp;
 #include <cmath>
 
 const double EARTH_RADIUS_KM = 6371.0;
-const double DEG_TO_RAD = M_PI / 180.0;
 
-
-// Haversine distance between two geographic points (in km)
-//
-// @param lat1 Latitude of point 1 (degrees)
-// @param lon1 Longitude of point 1 (degrees)
-// @param lat2 Latitude of point 2 (degrees)
-// @param lon2 Longitude of point 2 (degrees)
-// @return Distance in kilometers
+// Haversine formula adapted from:
+// https://www.geeksforgeeks.org/haversine-formula-to-find-distance-between-two-points-on-a-sphere/
 // [[Rcpp::export]]
 double haversine_cpp(double lat1, double lon1, double lat2, double lon2) {
-  double dlat = (lat2 - lat1) * DEG_TO_RAD;
-  double dlon = (lon2 - lon1) * DEG_TO_RAD;
+  double dLat = (lat2 - lat1) * M_PI / 180.0;
+  double dLon = (lon2 - lon1) * M_PI / 180.0;
 
-  double a = sin(dlat / 2.0) * sin(dlat / 2.0) +
-             cos(lat1 * DEG_TO_RAD) * cos(lat2 * DEG_TO_RAD) *
-             sin(dlon / 2.0) * sin(dlon / 2.0);
+  lat1 = lat1 * M_PI / 180.0;
+  lat2 = lat2 * M_PI / 180.0;
 
-  double c = 2.0 * atan2(sqrt(a), sqrt(1.0 - a));
-
+  double a = pow(sin(dLat / 2), 2) +
+             pow(sin(dLon / 2), 2) *
+             cos(lat1) * cos(lat2);
+  double c = 2 * asin(sqrt(a));
   return EARTH_RADIUS_KM * c;
 }
 
