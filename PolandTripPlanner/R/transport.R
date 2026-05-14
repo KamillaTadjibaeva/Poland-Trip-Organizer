@@ -33,7 +33,7 @@ get_transport_options <- function(from, to, date,
   raw <- tryCatch(
     switch(transport,
            plane = .plane_provider(from, to, date, cities),
-           train = .koleo_trains(from, to, date, cities),
+           train = .mock_options(from, to, date, transport, cities, n = 3L),
            bus   = .mock_options(from, to, date, transport, cities, n = 4L),
            car   = .mock_options(from, to, date, transport, cities, n = 1L)),
     error = function(e) {
@@ -254,41 +254,6 @@ print.transport_option <- function(x, ...) {
       price_eur    = as.numeric(o$price$total),
       scenic_score = 0.2,
       provider     = "Amadeus"
-    )
-  })
-}
-
-.koleo_trains <- function(from, to, date, cities) {
-  # koleo.pl exposes a public JSON endpoint. We resolve station slugs first.
-  slug <- function(name) {
-    url <- sprintf("https://koleo.pl/api/v2/main/stations/search/%s",
-                   utils::URLencode(name))
-    r <- httr::GET(url, httr::timeout(5))
-    httr::stop_for_status(r)
-    s <- httr::content(r)
-    if (!length(s)) stop("No koleo station for ", name)
-    s[[1]]$name_slug
-  }
-  s_from <- slug(from); s_to <- slug(to)
-  url <- sprintf("https://koleo.pl/api/v2/main/connections/%s/%s/%s",
-                 format(date, "%d-%m-%Y"), s_from, s_to)
-  r <- httr::GET(url, httr::timeout(8))
-  httr::stop_for_status(r)
-  conns <- httr::content(r)$connections %||% list()
-  if (!length(conns)) {
-    return(.mock_options(from, to, date, "train", cities, n = 3L))
-  }
-  lapply(utils::head(conns, 8L), function(c) {
-    dep <- as.POSIXct(c$departure, format = "%Y-%m-%dT%H:%M:%S")
-    arr <- as.POSIXct(c$arrival,   format = "%Y-%m-%dT%H:%M:%S")
-    dur <- as.numeric(difftime(arr, dep, units = "hours"))
-    price <- if (!is.null(c$price_from)) as.numeric(c$price_from) / 100 * 0.23
-             else NA_real_   # koleo gives PLN groszy; rough EUR conversion
-    .make_option(
-      mode = "train", from = from, to = to,
-      depart = dep, duration_h = dur, price_eur = price,
-      scenic_score = 0.7,
-      provider = "koleo.pl"
     )
   })
 }
