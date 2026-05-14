@@ -1,94 +1,104 @@
-# advanced-R — Multi-City Trip Planner
+# PolandTripPlanner
 
-Group project for the *Advanced R* course. The app helps a traveller pick a set
-of cities, then plans the most efficient way to visit them, allocates time per
-city based on importance, discovers scenic detours, and surfaces transport
-options for each leg.
+Group project for *Advanced R*. Plans multi-city trips across Poland: allocates time per city, discovers nearby detours, optimises visit order (TSP), and suggests transport for each leg.
 
-## Module split
+## Team
 
-| Member    | Module / responsibility                                                               |
-|-----------|----------------------------------------------------------------------------------------|
-| Vika      | Shiny UI: dropdown of top 20 cities, flight-in / flight-out, dates, transport, style  |
-| **Nijat** | TSP route optimisation + per-leg transport suggestions (`RouteOptimizer`)              |
-| **Kamilla** | Time-allocation per city + scenic detour discovery (`TripPlanner`, `City`)           |
+| Member  | Responsibility |
+|---------|----------------|
+| Kamilla | Time allocation + route discovery (`TripPlanner`, `City`) |
+| Nijat   | TSP optimisation + transport (`RouteOptimizer`, `plan_trip`) |
+| Vika    | Shiny UI |
 
-Everything is integrated into the single **`PolandTripPlanner`** R package under
-[Project/PolandTripPlanner/](Project/PolandTripPlanner/).
+## Setup
 
-## Quick start
+Requires R ≥ 4.1 and a C++ toolchain.
 
-Prerequisites:
-- R ≥ 4.1
-- A C++ toolchain (macOS: `xcode-select --install`; Debian/Ubuntu: `apt install build-essential`)
-
-From a fresh clone:
 ```sh
-make            # installs deps, builds the package
-make demo       # runs an end-to-end sample trip plan
-make help       # list other targets
+make          # install deps + build package
+make demo     # run demo
+make shiny    # launch Shiny app
 ```
 
-## What the `PolandTripPlanner` package provides
+## Usage
 
-### Time allocation & discovery (Kamilla)
-- **`TripPlanner`** (R6) — orchestrates time allocation and route discovery.
-- **`City`** (R6) — individual city with importance scoring and day allocation.
-- **`get_polish_cities()`** — bundled 40-city dataset with cultural/historical scores.
-- **`calculate_importance()`** — vectorised composite importance scoring.
-- **`find_route_discoveries()`** — finds interesting stops near the travel route.
-- **`fetch_cities_from_wikidata()`** — live city data from Wikidata SPARQL.
+```r
+library(PolandTripPlanner)
 
-### Route optimisation & transport (Nijat)
-- **`load_cities()`** — reads the bundled top-20 Polish cities CSV used by the UI dropdown.
-- **`plan_trip(...)`** — one-call pipeline: validates inputs → builds a cost matrix → solves the TSP → attaches ranked transport options for each leg.
-- **`RouteOptimizer`** (R6) — same pipeline, step-by-step.
-- **`solve_tsp()`** — exact Held–Karp DP (n ≤ 12) or nearest-neighbour + 2-opt (larger n), implemented in C++ via Rcpp.
-- **`get_transport_options()`** — queries Amadeus (planes) / koleo.pl (trains) and degrades to deterministic mocks if no credentials or the API is down.
+planner <- TripPlanner$new()
+planner$set_trip(
+  must_see   = c("Warsaw", "Krakow", "Gdansk"),
+  start_date = "2026-07-01",
+  end_date   = "2026-07-10",
+  transport  = "car"
+)
+planner$allocate_time()
+planner$print_allocation()
+planner$discover_route(radius_km = 50)
+planner$print_discovery()
+```
 
-## Techniques covered (per the course brief)
+## TripPlanner methods
 
-| Technique                                  | Where                                                                         |
-|--------------------------------------------|-------------------------------------------------------------------------------|
-| Advanced functions + defensive programming | `R/utils.R`, input validation in `RouteOptimizer` and `TripPlanner`           |
-| OOP — R6                                   | `TripPlanner`, `City`, `RouteOptimizer`                                       |
-| OOP — S3                                   | `trip_plan` / `transport_option` `print` & `summary` methods                  |
-| Rcpp                                       | `src/tsp.cpp` (TSP solvers), `src/distances.cpp` (Haversine)                  |
-| Vectorisation / performance                | C++ Haversine matrix; vectorised `build_cost_matrix()`, `calculate_importance()`|
-| R package structure                        | Full package: DESCRIPTION/NAMESPACE/R/src/inst/man                            |
-| Shiny app                                  | `shiny/app.R` (consumes `plan_trip()`)                                        |
-| API integration                            | Wikidata SPARQL, Aviationstack, Amadeus, koleo.pl                             |
+| Method | Description |
+|--------|-------------|
+| `TripPlanner$new(csv_path)` | Create planner (optional custom CSV) |
+| `$set_trip(must_see, start_date, end_date, transport)` | Configure trip |
+| `$allocate_time(min_days, weights)` | Distribute days across cities |
+| `$discover_route(radius_km, max_suggestions, suggest_nearby)` | Find nearby cities |
+| `$print_allocation()` / `$print_discovery()` | Print results |
+| `$get_city_objects()` / `$get_cities_data()` | Access data |
+| `$total_days` / `$city_count` | Read-only bindings |
+
+Parameters:
+- `transport`: `"car"`, `"train"`, `"bus"`, `"plane"`
+- `weights`: `list(population, historical, cultural, poi)`
+- `suggest_nearby`: `TRUE`/`FALSE`
+
+## Standalone functions
+
+```r
+get_polish_cities()
+calculate_importance(population, historical_score, cultural_score, poi_count)
+find_route_discoveries(route_cities, all_cities, radius_km, max_suggestions)
+load_cities()
+plan_trip(cities, start_city, budget, style)
+solve_tsp(cost_matrix, method)
+get_transport_options(from, to)
+```
+
+## Techniques
+
+| Technique | Where |
+|-----------|-------|
+| R6 OOP | `TripPlanner`, `City`, `RouteOptimizer` |
+| S3 OOP | `trip_plan`, `transport_option` print/summary methods |
+| Rcpp | `src/tsp.cpp` (TSP solvers), `src/distances.cpp` (Haversine) |
+| Vectorisation | C++ Haversine matrix, `build_cost_matrix()`, `calculate_importance()` |
+| R package | DESCRIPTION / NAMESPACE / R / src / inst / man |
+| Shiny | `shiny/app.R` |
+| API integration | Aviationstack, Amadeus, koleo.pl |
+| Defensive programming | Input validation in `utils.R`, `TripPlanner`, `RouteOptimizer` |
 
 ## Repository layout
 
 ```
-.
-├── Makefile                  # one-command bootstrap (deps + install)
-├── README.md                 # this file
-├── PolandTripPlanner/        # the unified R package
-│   ├── DESCRIPTION
-│   ├── NAMESPACE
-│   ├── R/                   # R sources (both modules)
-│   ├── src/                 # C++ (Rcpp) sources
-│   ├── inst/extdata/        # cities.csv + polish_cities.csv
-│   └── man/                 # generated documentation
-├── shiny/                    # Shiny front-end
-├── scripts/                  # stand-alone demo scripts
-└── docs/                     # integration guide
+├── Makefile
+├── README.md
+├── PolandTripPlanner/
+│   ├── R/
+│   ├── src/
+│   ├── inst/extdata/
+│   └── man/
+├── shiny/
+├── scripts/
+└── docs/
 ```
 
-## API credentials (optional)
+## API keys (optional)
 
-For real flight schedules, set an Aviationstack key (free tier, schedules only — prices are estimated):
+Transport lookups work offline with mocks. For live data:
 
 ```sh
 export AVIATIONSTACK_KEY=...
-# or persist for R sessions:
-echo 'AVIATIONSTACK_KEY=...' >> ~/.Renviron
 ```
-
-Amadeus is also supported (`AMADEUS_CLIENT_ID` / `AMADEUS_CLIENT_SECRET`) but their
-self-service portal is being decommissioned in July 2026 and signups are closed.
-
-Without any keys set, `get_transport_options()` returns deterministic mocks so the
-pipeline (and Vika's UI) stays usable offline.

@@ -5,12 +5,26 @@ WIKIDATA_SPARQL_ENDPOINT <- "https://query.wikidata.org/sparql"
 #'
 #' Queries Wikidata for Polish cities with population > min_population,
 #' retrieving name, coordinates, population, and voivodeship.
-#' Falls back to the built-in dataset on failure.
+#' This is a free API - no key required.
+#'
+#' Uses defensive programming: validates response, handles connection errors,
+#' and falls back to the built-in dataset on failure.
 #'
 #' @param min_population Numeric, minimum population to include (default: 2000)
 #' @param verbose Logical, print progress? (default: TRUE)
 #'
 #' @return A data.frame with columns: name, voivodeship, lat, lon, population
+#'
+#' @details The SPARQL query retrieves:
+#'   \itemize{
+#'     \item City name (English label)
+#'     \item Geographic coordinates (latitude, longitude)
+#'     \item Population (most recent value)
+#'     \item Voivodeship (administrative region)
+#'   }
+#'   Historical and cultural scores are not available from Wikidata,
+#'   so these are merged from the built-in dataset when available,
+#'   or estimated based on population.
 #'
 #' @export
 fetch_cities_from_wikidata <- function(min_population = 2000,
@@ -19,6 +33,7 @@ fetch_cities_from_wikidata <- function(min_population = 2000,
     stop("'min_population' must be a non-negative number.")
   }
 
+  # Retrieves: city name, coordinates, population, voivodeship
   sparql_query <- paste0('
 SELECT DISTINCT ?cityLabel ?lat ?lon ?population ?voivodeshipLabel WHERE {
   ?city wdt:P31/wdt:P279* wd:Q515 .        # instance of city (or subclass)
@@ -46,6 +61,7 @@ LIMIT 200
     message("Fetching Polish cities from Wikidata SPARQL API...")
   }
 
+  # API call
   response <- tryCatch({
     httr::GET(
       WIKIDATA_SPARQL_ENDPOINT,
@@ -72,6 +88,7 @@ LIMIT 200
     return(get_polish_cities())
   }
 
+  # parse JSON response
   content_text <- httr::content(response, as = "text", encoding = "UTF-8")
 
   parsed <- tryCatch({
@@ -96,6 +113,7 @@ LIMIT 200
     message(paste("  Received", length(bindings), "city records from Wikidata."))
   }
 
+  # Extract data from SPARQL bindings into vectors
   n <- length(bindings)
   names_vec <- character(n)
   lat_vec   <- numeric(n)
@@ -112,6 +130,7 @@ LIMIT 200
     voiv_vec[i]  <- gsub(" Voivodeship", "", b$voivodeshipLabel$value)
   }
 
+  # Remove duplicates (keep highest population for each city)
   temp_df <- data.frame(
     name = names_vec, lat = lat_vec, lon = lon_vec,
     population = pop_vec, voivodeship = voiv_vec,
@@ -125,6 +144,8 @@ LIMIT 200
   temp_df <- temp_df[!grepl("urban area|metropolitan|agglomeration",
                              temp_df$name, ignore.case = TRUE), ]
 
+  # Normalise Polish diacritics for matching
+  # Wikidata returns "Kraków", built-in uses "Krakow"
   strip_diacritics <- function(x) {
     from <- c("\u0105","\u0107","\u0119","\u0142","\u0144","\u00f3",
               "\u015b","\u017a","\u017c",
@@ -141,6 +162,9 @@ LIMIT 200
   # Create ASCII name column for matching
   temp_df$name_ascii <- strip_diacritics(temp_df$name)
 
+  # Merge with built-in scores 
+  # The built-in dataset has manually curated historical_score,
+  # cultural_score, and poi_count that Wikidata cannot provide.
   builtin <- get_polish_cities()
 
   # Match on ASCII-normalised names

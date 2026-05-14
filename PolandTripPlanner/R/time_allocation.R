@@ -1,3 +1,6 @@
+
+# Importance Score Calculation
+
 #' Calculate composite importance scores for cities
 #'
 #' Computes weighted importance scores from population, historical
@@ -40,6 +43,9 @@ calculate_importance <- function(population, historical_score,
     stop("'weights' must have exactly 4 elements.")
   }
 
+
+  # Normalise population to [0, 1] using log scale
+  # (prevents Warsaw from dominating everything)
   norm_pop  <- pmin(log1p(population) / log1p(2000000), 1.0)
 
   # Normalise scores (already on 1-10 scale)

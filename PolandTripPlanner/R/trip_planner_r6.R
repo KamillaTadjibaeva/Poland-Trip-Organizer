@@ -131,13 +131,8 @@ TripPlanner <- R6Class("TripPlanner",
     #'   Must have columns: name, voivodeship, lat, lon, population,
     #'   historical_score, cultural_score, poi_count.
     #'   If NULL (default), loads the built-in polish_cities.csv.
-    #' @param use_wikidata Logical, if TRUE fetch cities from Wikidata API
-    #'   instead of using the CSV (default: FALSE).
-    initialize = function(csv_path = NULL, use_wikidata = FALSE) {
-      # Load cities dataset: from Wikidata API, custom CSV, or built-in CSV
-      if (use_wikidata) {
-        private$.cities_data <- fetch_cities_from_wikidata(verbose = TRUE)
-      } else if (!is.null(csv_path)) {
+    initialize = function(csv_path = NULL) {
+      if (!is.null(csv_path)) {
         if (!file.exists(csv_path)) {
           stop(paste("CSV file not found:", csv_path))
         }

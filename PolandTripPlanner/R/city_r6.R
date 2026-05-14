@@ -2,8 +2,21 @@
 
 #' R6 Class Representing a Polish City
 #'
-#' Stores geographic coordinates, demographic data, importance scoring,
-#' day allocation, and nearby city discovery for a single city.
+#' Encapsulates all data and behaviour for a single city:
+#' geographic coordinates, demographic data, importance scoring,
+#' day allocation, and nearby city discovery.
+#'
+#' @section Private Fields:
+#' All city attributes are stored as private fields and exposed
+#' through read-only active bindings (encapsulation).
+#'
+#' @section Public Methods:
+#' \describe{
+#'   \item{initialize()}{Create a City from raw attributes}
+#'   \item{calculate_importance()}{Compute importance score}
+#'   \item{calculate_days()}{Allocate days based on share of total importance}
+#'   \item{find_nearby_cities()}{Discover cities within a radius using C++}
+#' }
 #'
 #' @export
 City <- R6Class("City",
@@ -139,6 +152,7 @@ City <- R6Class("City",
                                                 historical = 0.35,
                                                 cultural   = 0.35,
                                                 poi        = 0.15)) {
+      # function ffrom time_allocation.R
       private$.importance <- calculate_importance(
         private$.population,
         private$.historical_score,
@@ -229,6 +243,7 @@ City <- R6Class("City",
     #'
     #' @param new_days New number of days (numeric, >= 1)
     #' @return self (for method chaining)
+    # Needed because a single City cannot fix a global rounding error
     set_days = function(new_days) {
       if (!is.numeric(new_days) || new_days < 1) {
         stop("'new_days' must be at least 1.")

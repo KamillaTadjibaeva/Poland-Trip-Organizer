@@ -68,11 +68,3 @@ planner2$discover_route(radius_km = 50, max_suggestions = 5,
                         suggest_nearby = FALSE)
 planner2$print_discovery()
 
-
-
-# # ---- Wikidata API ----
-
-# wikidata_cities <- tryCatch(
-#   fetch_cities_from_wikidata(min_population = 50000, verbose = TRUE),
-#   error = function(e) NULL
-# )
