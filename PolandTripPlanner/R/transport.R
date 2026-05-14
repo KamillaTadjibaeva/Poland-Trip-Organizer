@@ -28,23 +28,34 @@ get_transport_options <- function(from, to, date,
                                   style     = "fastest",
                                   cities    = NULL) {
   .assert_string(from); .assert_string(to)
-  .assert_choice(transport, .TRANSPORT_TYPES)
+  if (!is.character(transport) || !length(transport)) {
+    stop("`transport` must be a non-empty character vector.", call. = FALSE)
+  }
+  bad <- setdiff(transport, .TRANSPORT_TYPES)
+  if (length(bad)) {
+    stop("Unknown transport mode(s): ", paste(bad, collapse = ", "),
+         call. = FALSE)
+  }
   .assert_choice(style,     .TRAVEL_STYLES)
   date <- .assert_date(date, "date")
   if (is.null(cities)) cities <- load_cities()
 
-  raw <- tryCatch(
-    switch(transport,
-           plane = .plane_provider(from, to, date, cities),
-           train = .mock_options(from, to, date, transport, cities),
-           bus   = .bus_provider(from, to, date, cities),
-           car   = .car_provider(from, to, date, cities)),
-    error = function(e) {
-      message("Transport API failed (", conditionMessage(e),
-              "); falling back to mock data.")
-      .mock_options(from, to, date, transport, cities, n = 3L)
-    }
-  )
+  fetch_one <- function(mode) {
+    tryCatch(
+      switch(mode,
+             plane = .plane_provider(from, to, date, cities),
+             train = .mock_options(from, to, date, "train", cities, n = 3L),
+             bus   = .bus_provider(from, to, date, cities),
+             car   = .car_provider(from, to, date, cities)),
+      error = function(e) {
+        message("Transport API failed for ", mode, " (",
+                conditionMessage(e), "); falling back to mock data.")
+        .mock_options(from, to, date, mode, cities, n = 3L)
+      }
+    )
+  }
+
+  raw <- unlist(lapply(unique(transport), fetch_one), recursive = FALSE)
   filter_by_style(raw, style)
 }
 
