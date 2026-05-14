@@ -4,9 +4,9 @@ suppressPackageStartupMessages(library(PolandTripPlanner))
 
 # --- User input (this is what Vika's UI will collect) ----------------------
 input <- list(
-  selected   = c("Warsaw", "Krakow", "Wroclaw", "Poznan", "Gdansk", "Lublin"),
+  selected   = c("Warsaw", "Kraków", "Wrocław", "Poznań", "Gdańsk", "Lublin"),
   flight_in  = "Warsaw",
-  flight_out = "Gdansk",
+  flight_out = "Gdańsk",
   start_date = "2026-06-01",
   end_date   = "2026-06-10",
   transport  = "train",
