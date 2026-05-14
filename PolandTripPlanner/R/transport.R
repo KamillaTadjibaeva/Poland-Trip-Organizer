@@ -37,8 +37,8 @@ get_transport_options <- function(from, to, date,
     switch(transport,
            plane = .plane_provider(from, to, date, cities),
            train = .mock_options(from, to, date, transport, cities),
-           bus   = .bus_provider(from, to, date, transport, cities),
-           car   = .car_provider(from, to, date, transport, cities)),
+           bus   = .bus_provider(from, to, date, cities),
+           car   = .car_provider(from, to, date, cities)),
     error = function(e) {
       message("Transport API failed (", conditionMessage(e),
               "); falling back to mock data.")
