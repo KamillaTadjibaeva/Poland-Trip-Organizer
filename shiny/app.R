@@ -41,7 +41,7 @@ ui <- fluidPage(
       selectInput("transport", "Transport",
                   choices = c("plane", "train", "bus", "car"),
                   selected = "train",
-                  multiple = FALSE),
+                  multiple = TRUE),
       checkboxInput("scenic_only", "Scenic mode (enable discoveries)", FALSE),
       conditionalPanel(
         condition = "input.scenic_only == true",

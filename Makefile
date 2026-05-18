@@ -2,7 +2,7 @@ PKG      := PolandTripPlanner
 PKGDIR   := PolandTripPlanner
 R        ?= R
 RSCRIPT  ?= Rscript
-DEPS     := Rcpp R6 httr jsonlite pkgload shiny
+DEPS     := Rcpp R6 httr jsonlite pkgload shiny devtools
 
 .PHONY: all setup deps install check demo shiny ui clean help
 
@@ -34,6 +34,9 @@ check: deps
 
 demo: install
 	$(RSCRIPT) scripts/demo.R
+
+demo-kamilla: install
+	$(RSCRIPT) scripts/run_demo.R
 
 shiny ui: install
 	$(RSCRIPT) -e 'shiny::runApp("shiny", launch.browser = TRUE)'

@@ -101,4 +101,8 @@ Transport lookups work offline with mocks. For live data:
 
 ```sh
 export AVIATIONSTACK_KEY=...
+export GOOGLE_MAPS_API_KEY='AIza...'
+# or persist for R sessions:
+echo 'AVIATIONSTACK_KEY=...' >> ~/.Renviron
+echo 'GOOGLE_MAPS_API_KEY=...' >> ~/.Renviron
 ```

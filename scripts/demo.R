@@ -4,13 +4,13 @@ suppressPackageStartupMessages(library(PolandTripPlanner))
 
 # --- User input (this is what Vika's UI will collect) ----------------------
 input <- list(
-  selected   = c("Warsaw", "Krakow", "Wroclaw", "Poznan", "Gdansk", "Lublin"),
+  selected   = c("Warsaw", "Kraków", "Wrocław", "Poznań", "Gdańsk", "Lublin"),
   flight_in  = "Warsaw",
-  flight_out = "Gdansk",
+  flight_out = "Gdańsk",
   start_date = "2026-06-01",
   end_date   = "2026-06-10",
-  transport  = "train",
-  style      = "fastest"
+  transport  = c("car", "train"),   # multi-select: best mode per leg
+  style      = "scenic"             # scenic -> route discovery turns ON
 )
 
 # --- Pretty-print the user's choices --------------------------------------
@@ -24,8 +24,7 @@ cat("Flying out from  : ", input$flight_out, "\n", sep = "")
 cat("Travel dates     : ", input$start_date, " to ", input$end_date,
     "  (", as.integer(as.Date(input$end_date) - as.Date(input$start_date)),
     " days)\n", sep = "")
-cat("Preferred transport: ", input$transport,
-    "  (used between cities once you've landed)\n", sep = "")
+cat("Preferred transport: ", paste(input$transport, collapse = " + "), "\n", sep = "")
 cat("Travel style       : ", input$style, "  ",
     switch(input$style,
            fastest  = "(minimise total travel time)",
@@ -34,11 +33,32 @@ cat("Travel style       : ", input$style, "  ",
     "\n", sep = "")
 cat("\n")
 
+normalize_city_names <- function(x) {
+  x <- gsub("ą", "a", x, fixed = TRUE)
+  x <- gsub("ć", "c", x, fixed = TRUE)
+  x <- gsub("ę", "e", x, fixed = TRUE)
+  x <- gsub("ł", "l", x, fixed = TRUE)
+  x <- gsub("ń", "n", x, fixed = TRUE)
+  x <- gsub("ó", "o", x, fixed = TRUE)
+  x <- gsub("ś", "s", x, fixed = TRUE)
+  x <- gsub("ż", "z", x, fixed = TRUE)
+  x <- gsub("ź", "z", x, fixed = TRUE)
+  x <- gsub("Ą", "A", x, fixed = TRUE)
+  x <- gsub("Ć", "C", x, fixed = TRUE)
+  x <- gsub("Ę", "E", x, fixed = TRUE)
+  x <- gsub("Ł", "L", x, fixed = TRUE)
+  x <- gsub("Ń", "N", x, fixed = TRUE)
+  x <- gsub("Ó", "O", x, fixed = TRUE)
+  x <- gsub("Ś", "S", x, fixed = TRUE)
+  x <- gsub("Ż", "Z", x, fixed = TRUE)
+  x <- gsub("Ź", "Z", x, fixed = TRUE)
+}
+
 # --- Plan ------------------------------------------------------------------
 plan <- plan_trip(
-  selected   = input$selected,
-  flight_in  = input$flight_in,
-  flight_out = input$flight_out,
+  selected   = normalize_city_names(input$selected),
+  flight_in  = normalize_city_names(input$flight_in),
+  flight_out = normalize_city_names(input$flight_out),
   start_date = input$start_date,
   end_date   = input$end_date,
   transport  = input$transport,
