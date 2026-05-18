@@ -2,7 +2,7 @@ PKG      := PolandTripPlanner
 PKGDIR   := PolandTripPlanner
 R        ?= R
 RSCRIPT  ?= Rscript
-DEPS     := Rcpp R6 httr jsonlite pkgload shiny
+DEPS     := Rcpp R6 httr jsonlite pkgload shiny devtools
 
 .PHONY: all setup deps install check demo shiny ui clean help
 
