@@ -33,11 +33,32 @@ cat("Travel style       : ", input$style, "  ",
     "\n", sep = "")
 cat("\n")
 
+normalize_city_names <- function(x) {
+  x <- gsub("ą", "a", x, fixed = TRUE)
+  x <- gsub("ć", "c", x, fixed = TRUE)
+  x <- gsub("ę", "e", x, fixed = TRUE)
+  x <- gsub("ł", "l", x, fixed = TRUE)
+  x <- gsub("ń", "n", x, fixed = TRUE)
+  x <- gsub("ó", "o", x, fixed = TRUE)
+  x <- gsub("ś", "s", x, fixed = TRUE)
+  x <- gsub("ż", "z", x, fixed = TRUE)
+  x <- gsub("ź", "z", x, fixed = TRUE)
+  x <- gsub("Ą", "A", x, fixed = TRUE)
+  x <- gsub("Ć", "C", x, fixed = TRUE)
+  x <- gsub("Ę", "E", x, fixed = TRUE)
+  x <- gsub("Ł", "L", x, fixed = TRUE)
+  x <- gsub("Ń", "N", x, fixed = TRUE)
+  x <- gsub("Ó", "O", x, fixed = TRUE)
+  x <- gsub("Ś", "S", x, fixed = TRUE)
+  x <- gsub("Ż", "Z", x, fixed = TRUE)
+  x <- gsub("Ź", "Z", x, fixed = TRUE)
+}
+
 # --- Plan ------------------------------------------------------------------
 plan <- plan_trip(
-  selected   = input$selected,
-  flight_in  = input$flight_in,
-  flight_out = input$flight_out,
+  selected   = normalize_city_names(input$selected),
+  flight_in  = normalize_city_names(input$flight_in),
+  flight_out = normalize_city_names(input$flight_out),
   start_date = input$start_date,
   end_date   = input$end_date,
   transport  = input$transport,
