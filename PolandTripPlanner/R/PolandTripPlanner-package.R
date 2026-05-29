@@ -6,7 +6,7 @@
 #'   \item Intelligent time allocation across cities based on cultural and
 #'     historical significance (TripPlanner R6 class)
 #'   \item Scenic route discovery identifying interesting stops along the way
-#'   \item Optimal visit-order routing via a C++ TSP solver (RouteOptimizer R6 class)
+#'   \item Optimal visit-order routing via a C++ TSP solver (unified TripPlanner R6 class)
 #'   \item Per-leg transport suggestions filtered by user preferences
 #' }
 #'

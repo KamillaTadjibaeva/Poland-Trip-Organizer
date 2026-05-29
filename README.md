@@ -7,7 +7,7 @@ Group project for *Advanced R*. Plans multi-city trips across Poland: allocates 
 | Member  | Responsibility |
 |---------|----------------|
 | Kamilla | Time allocation + route discovery (`TripPlanner`, `City`) |
-| Nijat   | TSP optimisation + transport (`RouteOptimizer`, `plan_trip`) |
+| Nijat   | TSP optimisation + transport (`TripPlanner$plan()`, `plan_trip`) |
 | Vika    | Shiny UI |
 
 ## Setup
@@ -71,14 +71,14 @@ get_transport_options(from, to)
 
 | Technique | Where |
 |-----------|-------|
-| R6 OOP | `TripPlanner`, `City`, `RouteOptimizer` |
+| R6 OOP | `TripPlanner`, `City` |
 | S3 OOP | `trip_plan`, `transport_option` print/summary methods |
 | Rcpp | `src/tsp.cpp` (TSP solvers), `src/distances.cpp` (Haversine) |
 | Vectorisation | C++ Haversine matrix, `build_cost_matrix()`, `calculate_importance()` |
 | R package | DESCRIPTION / NAMESPACE / R / src / inst / man |
 | Shiny | `shiny/app.R` |
 | API integration | Aviationstack, Amadeus, koleo.pl |
-| Defensive programming | Input validation in `utils.R`, `TripPlanner`, `RouteOptimizer` |
+| Defensive programming | Input validation in `utils.R`, `TripPlanner` |
 
 ## Repository layout
 

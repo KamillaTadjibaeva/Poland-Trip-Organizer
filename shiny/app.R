@@ -3,21 +3,7 @@ load_all("../PolandTripPlanner")
 library(shiny)
 library(leaflet)
 
-#need to normalize as route planner and scenic module use different naming formats
 cities <- load_cities()
-
-all_cities <- get_polish_cities()
-
-normalize_city_key <- function(x) {
-  tolower(iconv(x, from = "", to = "ASCII//TRANSLIT"))
-}
-
-map_to_polish_city_names <- function(city_names, all_city_names) {
-  idx <- match(normalize_city_key(city_names), normalize_city_key(all_city_names))
-  mapped <- city_names
-  mapped[!is.na(idx)] <- all_city_names[idx[!is.na(idx)]]
-  mapped
-}
 
 ui <- fluidPage(
   titlePanel("Trip Planner"),
@@ -147,8 +133,8 @@ server <- function(input, output, session) {
     primary_transport <- input$transport
     
     tryCatch({
-      # Step 1 — get optimal route from Nijat's solver
-      p <- plan_trip(
+      # One unified TripPlanner instance handles routing + allocation + discovery.
+      tp <- suppressMessages(TripPlanner$new(
         selected   = input$cities,
         flight_in  = input$flight_in,
         flight_out = input$flight_out,
@@ -156,21 +142,12 @@ server <- function(input, output, session) {
         end_date   = input$end_date,
         transport  = primary_transport,
         style      = style
-      )
-      
-      # Step 2 — map route city names to Polish versions for Kamilla's backend
-      route_for_discovery <- map_to_polish_city_names(unique(p$route), all_cities$name)
-      
-      # Step 3 — use Kamilla's TripPlanner for allocation and discovery
-      tp <- TripPlanner$new()
-      tp$set_trip(
-        must_see   = route_for_discovery,
-        start_date = input$start_date,
-        end_date   = input$end_date,
-        transport  = primary_transport
-      )
-      
-      # Step 4 — time allocation
+      ))
+
+      # Step 1 — optimal route (TSP)
+      p <- tp$plan()
+
+      # Step 2 — time allocation
       alloc <- tp$allocate_time()
       p$allocation <- data.frame(
         City       = alloc$cities,
@@ -179,7 +156,7 @@ server <- function(input, output, session) {
         stringsAsFactors = FALSE
       )
       
-      # Step 5 — scenic discoveries
+      # Step 3 — scenic discoveries
       if (isTRUE(input$scenic_only)) {
         d <- tp$discover_route(
           radius_km       = input$radius_km,
